@@ -6,24 +6,28 @@ import java.util.Queue;
 public class ClassicProducerConsumerExample {
     public static void main(String[] args) throws InterruptedException {
         Buffer buffer = new Buffer(2);
-        Thread producerThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    buffer.produce();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+        Thread producerThread = new Thread(() -> {
+            try {
+                int value = 0;
+                while (true) {
+                    buffer.add(value);
+                    System.out.println("Produced " + value);
+                    value ++;
+                    Thread.sleep(1000);
                 }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         });
-        Thread consumerThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    buffer.consume();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+        Thread consumerThread = new Thread(() -> {
+            try {
+                while (true) {
+                    int value = buffer.poll();
+                    System.out.println("Consume " + value);
+                    Thread.sleep(1000);
                 }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         });
         producerThread.start();
@@ -38,36 +42,23 @@ public class ClassicProducerConsumerExample {
             this.list = new LinkedList<>();
             this.size = size;
         }
-        public void produce() throws InterruptedException {
-            int value = 0;
-            while (true) {
-                synchronized (this) {
-                    while (list.size() >= size) {
-                        // wait for the consumer
-                        wait();
-                    }
-                    list.add(value);
-                    System.out.println("Produced " + value);
-                    value++;
-                    // notify the consumer
-                    notify();
-                    Thread.sleep(1000);
+        public void add(int value) throws InterruptedException {
+            synchronized (this) {
+                while (list.size() >= size) {
+                    wait();
                 }
+                list.add(value);
+                notify();
             }
         }
-        public void consume() throws InterruptedException {
-            while (true) {
-                synchronized (this) {
-                    while (list.size() == 0) {
-                        // wait for the producer
-                        wait();
-                    }
-                    int value = list.poll();
-                    System.out.println("Consume " + value);
-                    // notify the producer
-                    notify();
-                    Thread.sleep(1000);
+        public int poll() throws InterruptedException {
+            synchronized (this) {
+                while (list.size() == 0) {
+                    wait();
                 }
+                int value = list.poll();
+                notify();
+                return value;
             }
         }
     }
